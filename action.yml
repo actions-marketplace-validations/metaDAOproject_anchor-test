@@ -7,47 +7,37 @@ inputs:
   node-version:
     description: 'Version of node.js to use'
     required: false
-    default: '16.15.1' # LTS
+    default: '20.11.0' # LTS
   solana-cli-version:
     description: 'Version of Solana CLI to use'
     required: false
-    default: '1.15.2' # stable
+    default: '1.17.16' # stable
   anchor-version:
     description: 'Version of Anchor to use'
     required: false
-    default: '0.27.0' # latest
+    default: '0.29.0' # latest
+  features:
+    description: 'Features to pass to cargo'
+    required: false
+    default: 'default'
 runs:
   using: 'composite'
   steps:
-    - uses: actions/setup-node@v3
+    - uses: metadaoproject/setup-anchor@v3.4
       with:
         node-version: ${{ inputs.node-version }}
+        solana-cli-version: ${{ inputs.solana-cli-version }}
+        anchor-version: ${{ inputs.anchor-version }}
     - name: Cache node_modules
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ./node_modules/
         key: node-modules-${{ runner.os }}-build-${{ inputs.node-version }}
     - name: Install node_modules
       run: yarn
       shell: bash
-    - name: Cache Solana CLI tools
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.cache/solana/
-          ~/.local/share/solana/
-        key: solana-cli-${{ runner.os }}-build-${{ inputs.solana-cli-version }}
-    - name: Install Solana CLI tools
-      run: sh -c "$(curl -sSfL https://release.solana.com/v${{ inputs.solana-cli-version }}/install)"
-      shell: bash
-    - name: Update PATH
-      run: echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH 
-      shell: bash
     - name: Create keypair
       run: solana-keygen new --no-bip39-passphrase
-      shell: bash
-    - name: Install Anchor
-      run: npm i -g @project-serum/anchor-cli@${{ inputs.anchor-version }}
       shell: bash
     - name: Make Anchor.toml compatible with runner
       run: sed -i 's:/user/:/runner/:' Anchor.toml
@@ -61,6 +51,5 @@ runs:
     - name: Cache Cargo dependencies
       uses: Swatinem/rust-cache@v2
     - name: Run tests
-      run: anchor test
+      run: anchor test -- --features ${{ inputs.features }}
       shell: bash
-
